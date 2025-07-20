@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>カラー生成ツール</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap");
+
+    body {
+      margin: 0;
+      position: relative;
+      height: 100vh;
+      background-color: #222;
+      font-family: "Poppins", sans-serif;
+      font-weight: 600;
+      color: white;
+      transition: background-color 0.5s ease;
+    }
+
+    .history {
+      position: absolute;
+      bottom: 11em;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 0.5em;
+      flex-wrap: wrap;
+    }
+
+    .swatch {
+      width: 24px;
+      height: 24px;
+      border: 1px solid white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .wrapper-container {
+      position: absolute;
+      bottom: 2em;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .wrapper {
+      background-color: #1b1a20;
+      border-radius: 10px;
+      padding: 0.6em;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.6em;
+      align-items: center;
+    }
+
+    .code {
+      font-size: 1.2em;
+      user-select: all;
+      border: 1px solid white;
+      padding: 0.5em 0.8em;
+      border-radius: 6px;
+      background-color: #1b1a20;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    .copy-button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.2em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .copy-button svg {
+      width: 24px;
+      height: 24px;
+      fill: white;
+      transition: fill 0.3s ease;
+    }
+
+    .copy-button:hover svg {
+      fill: #ccc; /* ← グレー化のみ。文字は変更なし！ */
+    }
+
+    .generate-button,
+    .save-button {
+      background-color: white;
+      color: #1b1a20;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5em 0.8em;
+      font-size: 1.1em;
+      font-family: "Poppins", sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .generate-button:hover,
+    .save-button:hover {
+      background-color: #eee; /* ← 背景だけ変える。文字色はそのまま黒！ */
+    }
+
+    .toast {
+      position: fixed;
+      top: 0.8em;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #1b1a20;
+      color: white;
+      padding: 0.6em 1.2em;
+      border-radius: 6px;
+      font-family: "Poppins", sans-serif;
+      font-weight: 600;
+      border: 0.5px solid white;
+      opacity: 0;
+      animation: fadeInOut 2s ease forwards;
+      z-index: 9999;
+    }
+
+    @keyframes fadeInOut {
+      0%   { opacity: 0; transform: translateX(-50%) translateY(10px); }
+      10%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+      90%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="history" id="colorHistory"></div>
+
+  <div class="wrapper-container">
+    <div class="wrapper">
+      <button class="generate-button" onclick="generateColor()">Generate Color</button>
+
+      <button class="copy-button" onclick="copyColorCode()" aria-label="Copy Color">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+          <path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/>
+        </svg>
+      </button>
+
+      <button class="save-button" onclick="saveHistoryAsText()">Save History</button>
+
+      <span class="code" id="colorCode">Color Code: #000000</span>
+    </div>
+  </div>
+
+  <script>
+    let history = [];
+
+    function getRandomColor() {
+      const letters = "0123456789ABCDEF";
+      let color = "#";
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
+    }
+
+    function generateColor() {
+      const newColor = getRandomColor();
+      document.body.style.backgroundColor = newColor;
+      document.getElementById("colorCode").textContent = `Color Code: ${newColor}`;
+      addToHistory(newColor);
+    }
+
+    function copyColorCode() {
+      const code = document.getElementById("colorCode").textContent.replace("Color Code: ", "");
+      navigator.clipboard.writeText(code)
+        .then(() => showToast("Copied to clipboard!"))
+        .catch(() => showToast("Copy failed"));
+    }
+
+    function copyFromHistory(color) {
+      navigator.clipboard.writeText(color)
+        .then(() => showToast(`Copied ${color}`))
+        .catch(() => showToast("Copy failed"));
+      generateColorFromHistory(color);
+    }
+
+    function generateColorFromHistory(color) {
+      document.body.style.backgroundColor = color;
+      document.getElementById("colorCode").textContent = `Color Code: ${color}`;
+    }
+
+    function addToHistory(color) {
+      if (history.length >= 9) history.shift();
+      history.push(color);
+      const container = document.getElementById("colorHistory");
+      container.innerHTML = history.map(c =>
+        `<div class="swatch" style="background:${c}" onclick="copyFromHistory('${c}')" title="${c}"></div>`
+      ).join("");
+    }
+
+    function saveHistoryAsText() {
+      if (history.length === 0) {
+        showToast("No history to save!");
+        return;
+      }
+      const text = history.join("\n");
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "color-history.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("History saved!");
+    }
+
+    function showToast(message) {
+      const toast = document.createElement("div");
+      toast.className = "toast";
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    }
+
+    generateColor();
+  </script>
+</body>
+</html>
